@@ -1,0 +1,5 @@
+#!/bin/bash
+
+ source STORM_PACKAGE_PATH/env/env.sh
+
+ nohup $STORM_HOME/bin/storm ui >/dev/null 2>&1  &  echo $! >> STORM_PACKAGE_PATH/running_pid

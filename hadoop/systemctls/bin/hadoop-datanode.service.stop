@@ -1,0 +1,5 @@
+#!/bin/bash
+
+source HADOOP_PACKAGE_PATH/env/env.sh
+
+$HADOOP_HOME/sbin/hadoop-daemon.sh stop datanode

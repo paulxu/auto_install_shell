@@ -1,0 +1,11 @@
+#!/bin/bash
+
+source HBASE_PACKAGE_PATH/env/env.sh
+
+ZNODE_FILE="$TD_DATA/pids/hbase/hbase-master.znode"
+if [ -e $ZNODE_FILE ]
+then
+ rm -fr $ZNODE_FILE
+fi
+
+$HBASE_HOME/bin/hbase-daemon.sh stop master

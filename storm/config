@@ -1,0 +1,16 @@
+NIMBUS=dscn1
+SUPERVISOR=dscn1,dscn2,dscn3
+#配置每个节点启动的work
+SUPERSLOT=10
+# storm 文件存储路径
+STORM_DATA_DIR=/home/temp/data/storm
+ZOOKEEPER_SERVERS=dscn1,dscn2,dscn3
+#ui在哪个节点上 以及UI端口配置
+UI_HOST=dscn1 
+UI_PORT=8081
+
+# zookeeper [bin] 卸载的时候需要配置
+ZOOKEEPER_HOME=/home/temp/zookeeper
+
+# zookeeper 存储STORM HA管理信息
+ZOOKEEPER_DATA_FOR_STORM=/storm-ha

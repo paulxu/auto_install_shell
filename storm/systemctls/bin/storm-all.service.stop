@@ -1,0 +1,7 @@
+#!/bin/bash
+PID_DATA=$(cat STORM_PACKAGE_PATH/running_pid)
+
+for i in $PID_DATA ;do
+    echo -e "\033[1m  KILL $i \033[0m"
+    kill -9 $i
+done

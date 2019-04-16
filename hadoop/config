@@ -1,0 +1,38 @@
+#################################################################
+#								                                #
+#	请按照现场配置信息，认真填写以下信息后再开始安装	                    #
+#								                                #	
+#################################################################
+
+#---------------修改节点数量信息----------------------#
+HADOOP_DATA_NODE=dscn1,dscn2,dscn3
+# NAME NODE 以及 DATA NODE 顺序都是由Host正序排列。
+HADOOP_NAME_NODE=dscn1,dscn2
+# format ZK 
+HADOOP_FORMATZK=dscn1
+# 指定STANDY BY的 NameNode
+HADOOP_STANDY_NODE=dscn2
+# 指定Active 的NameNode
+HADOOP_ACTIVE_NODE=dscn1
+# 指定 History 启动在那个节点
+YARN_HISTORYSERVER=dscn2
+# hadoop NameNode 文件存储路径 只支持一个目录
+NAME_NODE_PATH=file:///home/temp/data/hadoop/hdfs/name
+
+# JOURNAL Node 文件存储路径
+JOURNAL_DATA_PATH=/home/temp/data/hadoop/journal
+
+# hadoop 临时文件目录
+HADOOP_TMP=/home/temp/data/hadoop/tmp
+
+# DATANODE 挂盘 地址 支持多个目录
+DATA_NODE_PATH=file:///home/temp/data/hadoop/hdfs/data/disk1
+
+# zookeeper [bin] 卸载的时候需要配置
+ZOOKEEPER_HOME=/home/hadmin/zookeeper/izk/zookeeper
+
+# zookeeper 存储HADOOP HA管理信息
+ZOOKEEPER_DATA_FOR_HADOOP=/hadoop-ha
+
+
+

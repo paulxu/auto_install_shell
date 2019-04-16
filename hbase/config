@@ -1,0 +1,14 @@
+#---------------修改节点数量信息----------------------#
+HBASE_MASTER=dscn2
+#regionservers
+HBASE_REGION=dscn1,dscn2,dscn3
+HBASE_ZOOKEEPER_DIR=/home/program/zookeeper
+
+ZOOKEEPER_HOME=/home/dscs/zookeeper
+# HBASE TEMP DIR
+HBASE_TMP_DIR=/home/temp/data/hbase/tmp
+
+# zookeeper 存储Hbase管理信息
+ZOOKEEPER_DATA_FOR_HBASE=/hbase
+# hdfs 存储的Hbase 数据
+HDFS_DATA_FOR_HBASE=/hbase
