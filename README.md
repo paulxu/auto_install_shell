@@ -1,10 +1,10 @@
 ## install -auto
 
 ### 需要配置的项目：
-* 1. `xxxx/env/env.sh` 检查里面的 `TD_BASE`
+* 1. `xxxx/env/env.sh`检查里面的 `TD_BASE`
 * 2. 检查`config`文件里面的配置项
-* 3. 版本升级 检查各个升级包的里面的配置如下：
-        hadoop 需要检查 HADOOP_HOME/etc/hadoop :
+* 3. 版本升级检查各个升级包的里面的配置如下：
+        hadoop需要检查 HADOOP_HOME/etc/hadoop :
         hadoop-env.sh 里面的Java配置
         例如：
 ```bash
