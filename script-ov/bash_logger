@@ -9,34 +9,84 @@
 # fi
 
 
-if [ "${SHELL##*/}" != "bash" ]; then
-  return
-fi
-if [ -n "${OSTYPE##solaris*}" ]; then #following not working in solaris
-  if [ "$AUDIT_INCLUDED" == "$$" ] || { [ -z "$SSH_ORIGINAL_COMMAND" ] && [ "$(cat /proc/$$/cmdline)" == 'bash-c"/etc/forcecommand.sh"' ]; }; then
+#orig filename: '/etc/bash_franzi'
+#This file must be sourced by '~/.bashrc', which 
+
+if [ "${OSTYPE:0:7}" != "solaris" ] #following not working in solaris
+then
+  if [ "$AUDIT_INCLUDED" == "$$" ] || { [ -z "$SSH_ORIGINAL_COMMAND" ] && [ "$(cat /proc/$$/cmdline)" == 'bash-c"/etc/forcecommand.sh"' ]; }
+  then
     return
   else
     declare -rx AUDIT_INCLUDED="$$"
   fi
 fi
-## allow change PS1 in ~/.bashrc
-#declare -rx PS1
+
+f_bk="\e[30m"
+f_r="\e[31m"
+f_g="\e[32m"
+f_y="\e[33m"
+f_be="\e[34m"
+f_m="\e[35m"
+f_c="\e[36m"
+f_w="\e[37m"
+b_bk="\e[40m"
+b_r="\e[41m"
+b_g="\e[42m"
+b_y="\e[43m"
+b_be="\e[44m"
+b_m="\e[45m"
+b_c="\e[46m"
+b_w="\e[47m"
+t_n="\e[0m"
+t_bd="\e[1m"
+t_u="\e[4m"
+t_bk="\e[5m"
+
+set-term-title () 
+{ 
+    echo -en "\033]0;$1\a";
+}
+
+_dir_chomp () {
+    local p=${1/#$HOME/\~} b s
+    s=${#p}
+    while [[ $p != "${p//\/}" ]]&&(($s>$2))
+    do
+        p=${p#/}
+        [[ $p =~ \.?. ]]
+        b=$b/${BASH_REMATCH[0]}
+        p=${p#*/}
+        ((s=${#b}+${#p}))
+    done
+    echo ${b/\/~/\~}${b+/}$p
+}
+
+
+##PS1="\u\[${t_n}${f_y}\]@\[${t_n}\]\h\[${t_n}${f_y}\]:\[${t_n}\]\$(_dir_chomp "\$\(pwd\)" 20)\[${t_n}${f_y}\]\\$\[${t_n}\] " #only highlight the seperators
+#declare -x PS1
 declare -rx HISTFILE="$HOME/.bash_history"
 declare -rx HISTSIZE=500000                                 #nbr of cmds in memory
 declare -rx HISTFILESIZE=500000                             #nbr of cmds on file
 declare -rx HISTCONTROL=""                                  #does not ignore spaces or duplicates
 declare -rx HISTIGNORE=""                                   #does not ignore patterns
 declare -rx HISTCMD                                         #history line number
-if [ -n "${OSTYPE##solaris*}" ]; then #following not working in solaris
-  if groups | grep -q root; then
-    declare -x TMOUT=43200                                    #timeout for root's sessions
+history -r                                                  #to reload history from file if a prior HISTSIZE has truncated it
+
+if [ "${OSTYPE:0:7}" != "solaris" ] #following not working in solaris
+then
+  if groups | grep -q root
+  then
+    declare -x TMOUT=3600                                     #timeout for root's sessions
     chattr +a "$HISTFILE"                                     #set append-only
   fi
 fi
+
 shopt -s histappend
 shopt -s cmdhist
 shopt -s histverify
-if shopt -q login_shell && [ -t 0 ]; then
+if shopt -q login_shell && [ -t 0 ]
+then
   stty -ixon
 fi
 declare -rx AUDIT_LOGINUSER="$(who -mu | awk '{print $1}')"
@@ -46,23 +96,22 @@ declare -rx AUDIT_PID="$$"
 declare -rx AUDIT_TTY="$(who -mu | awk '{print $2}')"
 declare -rx AUDIT_SSH="$([ -n "$SSH_CONNECTION" ] && echo "$SSH_CONNECTION" | awk '{print $1":"$2"->"$3":"$4}')"
 declare -rx AUDIT_STR="[audit $AUDIT_LOGINUSER/$AUDIT_LOGINPID as $AUDIT_USER/$AUDIT_PID on $AUDIT_TTY/$AUDIT_SSH]"
-declare -x AUDIT_LASTHISTLINE=""                            #to avoid logging the same line twice
+declare -x AUDIT_HISTLINE="0"                               #to avoid logging the same line twice
 declare -rx AUDIT_SYSLOG="1"                                #to use a local syslogd
 set +o functrace                                            #disable trap DEBUG inherited in functions, command substitutions or subshells, normally the default setting already
 shopt -s extglob                                            #enable extended pattern matching operators
+
 function AUDIT_DEBUG() {
-  if [ -z "$AUDIT_LASTHISTLINE" ]; then                     #initialization
-    local AUDIT_CMD="$(fc -l -1 -1)"                        #previous history command
-    AUDIT_LASTHISTLINE="${AUDIT_CMD%%+([^ 0-9])*}"
-  else
-    AUDIT_LASTHISTLINE="$AUDIT_HISTLINE"
-  fi
+  local AUDIT_LASTHISTLINE="${AUDIT_HISTLINE}"
   local AUDIT_CMD="$(history 1)"                            #current history command
   AUDIT_HISTLINE="${AUDIT_CMD%%+([^ 0-9])*}"
-  if [ "${AUDIT_HISTLINE:-0}" -ne "${AUDIT_LASTHISTLINE:-0}" ] || [ "${AUDIT_HISTLINE:-0}" -eq "1" ]; then  #avoid logging unexecuted commands after 'ctrl-c', 'empty+enter', or after 'ctrl-d'
+  if [ "${AUDIT_HISTLINE}" != "${AUDIT_LASTHISTLINE}" ]     #avoid logging unexecuted commands after 'ctrl-c', 'empty+enter', or after 'ctrl-d'
+  then
     echo -ne "${_backnone}${_frontgrey}"                    #disable prompt colors for the command's output
-    if [ -n "$AUDIT_SYSLOG" ]; then
-      if ! logger -p user.info -t "$AUDIT_STR $PWD" "${AUDIT_CMD##*( )?(+([0-9])?(\*)+( ))}"; then
+    if [ -n "$AUDIT_SYSLOG" ]
+    then
+      if ! logger -p user.info -t "$AUDIT_STR $PWD" "${AUDIT_CMD##*( )?(+([0-9])?(\*)+( ))}"
+      then
         echo error "$AUDIT_STR $PWD" "${AUDIT_CMD##*( )?(+([0-9])?(\*)+( ))}"
       fi
     else
@@ -73,26 +122,36 @@ function AUDIT_DEBUG() {
     return 1
   fi
 }
+
 function AUDIT_EXIT() {
   local AUDIT_STATUS="$?"
-  if [ -n "$AUDIT_SYSLOG" ]; then
+  if [ -n "$AUDIT_SYSLOG" ]
+  then
     logger -p user.info -t "$AUDIT_STR" "#=== session closed ==="
   else
-    echo $( date +%F_%H:%M:%S ) "$AUDIT_STR" "#=== session closed ===" >> /var/log/bash_history.log
+    echo $( date +%F_%H:%M:%S ) "$AUDIT_STR" "#=== session closed ===" >>/var/log/bash_history.log
   fi
   exit "$AUDIT_STATUS"
 }
+
 declare -frx +t AUDIT_DEBUG
 declare -frx +t AUDIT_EXIT
-if [ -n "$AUDIT_SYSLOG" ]; then
+if [ -n "$AUDIT_SYSLOG" ]
+then
   logger -p user.info -t "$AUDIT_STR" "#=== session opened ===" #audit the session openning
 else
   echo $( date +%F_%H:%M:%S ) "$AUDIT_STR" "#=== session opened ===" >>/var/log/bash_history.log
 fi
-
-## allow change in ~/.bashrc
-#declare -rx PROMPT_COMMAND="[ -n \"\$AUDIT_DONE\" ] && echo '-----------------------------'; AUDIT_DONE=; trap 'AUDIT_DEBUG && AUDIT_DONE=1; trap DEBUG' DEBUG"
 declare -x PROMPT_COMMAND="[ -n \"\$AUDIT_DONE\" ] && echo '-----------------------------'; AUDIT_DONE=; trap 'AUDIT_DEBUG && AUDIT_DONE=1; trap DEBUG' DEBUG"
 declare -rx BASH_COMMAND                                    #current command executed by user or a trap
 declare -rx SHELLOPT                                        #shell options, like functrace
 trap AUDIT_EXIT EXIT                                        #audit the session closing
+if [ -n "${SSH_ORIGINAL_COMMAND}" ]
+then
+  if [ -n "$AUDIT_SYSLOG" ]
+  then
+    logger -p user.info -t "$AUDIT_STR $PWD" "${SSH_ORIGINAL_COMMAND}"
+  else
+    echo $( date +%F_%H:%M:%S ) "$AUDIT_STR $PWD" "${SSH_ORIGINAL_COMMAND}" >>/var/log/bash_history.log
+  fi
+fi
