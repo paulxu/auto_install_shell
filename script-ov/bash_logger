@@ -1,0 +1,98 @@
+## sudo wget https://raw.githubusercontent.com/paulxu/auto_install_shell/master/script-ov/bash_logger -O /etc/bash_logger
+## sudo chown root:root /etc/bash_logger
+## sudo chmod 644 /etc/bash_logger
+
+## in ~/.bashrc
+# if [ -f /etc/bash_logger ]
+# then
+# source /etc/bash_logger
+# fi
+
+
+if [ "${SHELL##*/}" != "bash" ]; then
+  return
+fi
+if [ -n "${OSTYPE##solaris*}" ]; then #following not working in solaris
+  if [ "$AUDIT_INCLUDED" == "$$" ] || { [ -z "$SSH_ORIGINAL_COMMAND" ] && [ "$(cat /proc/$$/cmdline)" == 'bash-c"/etc/forcecommand.sh"' ]; }; then
+    return
+  else
+    declare -rx AUDIT_INCLUDED="$$"
+  fi
+fi
+## allow change PS1 in ~/.bashrc
+#declare -rx PS1
+declare -rx HISTFILE="$HOME/.bash_history"
+declare -rx HISTSIZE=500000                                 #nbr of cmds in memory
+declare -rx HISTFILESIZE=500000                             #nbr of cmds on file
+declare -rx HISTCONTROL=""                                  #does not ignore spaces or duplicates
+declare -rx HISTIGNORE=""                                   #does not ignore patterns
+declare -rx HISTCMD                                         #history line number
+if [ -n "${OSTYPE##solaris*}" ]; then #following not working in solaris
+  if groups | grep -q root; then
+    declare -x TMOUT=43200                                    #timeout for root's sessions
+    chattr +a "$HISTFILE"                                     #set append-only
+  fi
+fi
+shopt -s histappend
+shopt -s cmdhist
+shopt -s histverify
+if shopt -q login_shell && [ -t 0 ]; then
+  stty -ixon
+fi
+declare -rx AUDIT_LOGINUSER="$(who -mu | awk '{print $1}')"
+declare -rx AUDIT_LOGINPID="$(who -mu | awk '{print $6}')"
+declare -rx AUDIT_USER="$USER"                              #defined by pam during su/sudo
+declare -rx AUDIT_PID="$$"
+declare -rx AUDIT_TTY="$(who -mu | awk '{print $2}')"
+declare -rx AUDIT_SSH="$([ -n "$SSH_CONNECTION" ] && echo "$SSH_CONNECTION" | awk '{print $1":"$2"->"$3":"$4}')"
+declare -rx AUDIT_STR="[audit $AUDIT_LOGINUSER/$AUDIT_LOGINPID as $AUDIT_USER/$AUDIT_PID on $AUDIT_TTY/$AUDIT_SSH]"
+declare -x AUDIT_LASTHISTLINE=""                            #to avoid logging the same line twice
+declare -rx AUDIT_SYSLOG="1"                                #to use a local syslogd
+set +o functrace                                            #disable trap DEBUG inherited in functions, command substitutions or subshells, normally the default setting already
+shopt -s extglob                                            #enable extended pattern matching operators
+function AUDIT_DEBUG() {
+  if [ -z "$AUDIT_LASTHISTLINE" ]; then                     #initialization
+    local AUDIT_CMD="$(fc -l -1 -1)"                        #previous history command
+    AUDIT_LASTHISTLINE="${AUDIT_CMD%%+([^ 0-9])*}"
+  else
+    AUDIT_LASTHISTLINE="$AUDIT_HISTLINE"
+  fi
+  local AUDIT_CMD="$(history 1)"                            #current history command
+  AUDIT_HISTLINE="${AUDIT_CMD%%+([^ 0-9])*}"
+  if [ "${AUDIT_HISTLINE:-0}" -ne "${AUDIT_LASTHISTLINE:-0}" ] || [ "${AUDIT_HISTLINE:-0}" -eq "1" ]; then  #avoid logging unexecuted commands after 'ctrl-c', 'empty+enter', or after 'ctrl-d'
+    echo -ne "${_backnone}${_frontgrey}"                    #disable prompt colors for the command's output
+    if [ -n "$AUDIT_SYSLOG" ]; then
+      if ! logger -p user.info -t "$AUDIT_STR $PWD" "${AUDIT_CMD##*( )?(+([0-9])?(\*)+( ))}"; then
+        echo error "$AUDIT_STR $PWD" "${AUDIT_CMD##*( )?(+([0-9])?(\*)+( ))}"
+      fi
+    else
+      echo $( date +%F_%H:%M:%S ) "$AUDIT_STR $PWD" "${AUDIT_CMD##*( )?(+([0-9])?(\*)+( ))}" >>/var/log/bash_history.log
+    fi
+    return 0
+  else
+    return 1
+  fi
+}
+function AUDIT_EXIT() {
+  local AUDIT_STATUS="$?"
+  if [ -n "$AUDIT_SYSLOG" ]; then
+    logger -p user.info -t "$AUDIT_STR" "#=== session closed ==="
+  else
+    echo $( date +%F_%H:%M:%S ) "$AUDIT_STR" "#=== session closed ===" >> /var/log/bash_history.log
+  fi
+  exit "$AUDIT_STATUS"
+}
+declare -frx +t AUDIT_DEBUG
+declare -frx +t AUDIT_EXIT
+if [ -n "$AUDIT_SYSLOG" ]; then
+  logger -p user.info -t "$AUDIT_STR" "#=== session opened ===" #audit the session openning
+else
+  echo $( date +%F_%H:%M:%S ) "$AUDIT_STR" "#=== session opened ===" >>/var/log/bash_history.log
+fi
+
+## allow change in ~/.bashrc
+#declare -rx PROMPT_COMMAND="[ -n \"\$AUDIT_DONE\" ] && echo '-----------------------------'; AUDIT_DONE=; trap 'AUDIT_DEBUG && AUDIT_DONE=1; trap DEBUG' DEBUG"
+declare -x PROMPT_COMMAND="[ -n \"\$AUDIT_DONE\" ] && echo '-----------------------------'; AUDIT_DONE=; trap 'AUDIT_DEBUG && AUDIT_DONE=1; trap DEBUG' DEBUG"
+declare -rx BASH_COMMAND                                    #current command executed by user or a trap
+declare -rx SHELLOPT                                        #shell options, like functrace
+trap AUDIT_EXIT EXIT                                        #audit the session closing
